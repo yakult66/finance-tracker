@@ -1,4 +1,4 @@
-﻿import { persistedList, nextId } from '../../shared/storage'
+import { persistedList, nextId } from '../../shared/storage'
 import { useCashFlow } from '../cash-flow/useCashFlow'
 import type { AllowanceItem, AllowanceItemInput, AllowanceItemPatch } from '../../types'
 
@@ -62,6 +62,10 @@ function removeItem(id: string): void {
   if (index !== -1) allowanceItems.value.splice(index, 1)
 }
 
+function removeItemsOf(month: string): void {
+  allowanceItems.value = allowanceItems.value.filter((i) => i.month !== month)
+}
+
 export function useAllowance() {
   return {
     allowanceItems,
@@ -72,6 +76,7 @@ export function useAllowance() {
     addItem,
     updateItem,
     normalizeItem,
-    removeItem
+    removeItem,
+    removeItemsOf
   }
 }

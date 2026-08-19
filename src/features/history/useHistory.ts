@@ -1,6 +1,7 @@
-﻿import { computed } from 'vue'
+import { computed } from 'vue'
 import { useCashFlow } from '../cash-flow/useCashFlow'
 import { useFirstGoal } from '../first-goal/useFirstGoal'
+import { useAllowance } from '../allowance/useAllowance'
 import type { HistoryEntry } from '../../types'
 
 // 這個 feature 不擁有任何資料，只把別的 feature 產生的紀錄
@@ -9,6 +10,7 @@ import type { HistoryEntry } from '../../types'
 export function useHistory() {
   const { records, removeRecord } = useCashFlow()
   const { plans, removePlan } = useFirstGoal()
+  const { allowanceItems, removeItemsOf } = useAllowance()
 
   const history = computed<HistoryEntry[]>(() => {
     const entries: HistoryEntry[] = [
@@ -24,9 +26,13 @@ export function useHistory() {
   })
 
   function removeEntry(entry: HistoryEntry): void {
-    if (entry.kind === 'cashflow') removeRecord(entry.id)
-    else removePlan(entry.id)
+    if (entry.kind === 'cashflow') {
+      removeRecord(entry.id)
+      removeItemsOf(entry.month)
+    } else {
+      removePlan(entry.id)
+    }
   }
 
-  return { history, records, plans, removeEntry }
+  return { history, records, plans, allowanceItems, removeEntry }
 }
