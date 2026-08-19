@@ -1,19 +1,20 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import AppNav from './app/AppNav.vue'
-import { tabs } from './app/navigation.js'
+import { tabs } from './app/navigation'
+import type { Tab } from './types'
 
 const TAB_KEY = 'finance_active_tab'
 const COLLAPSED_KEY = 'finance_nav_collapsed'
 
 const stored = localStorage.getItem(TAB_KEY)
-const activeTab = ref(tabs.some((t) => t.id === stored) ? stored : tabs[0].id)
+const activeTab = ref<string>(tabs.some((t: Tab) => t.id === stored) ? (stored as string) : tabs[0].id)
 const collapsed = ref(localStorage.getItem(COLLAPSED_KEY) === '1')
 
-watch(activeTab, (v) => localStorage.setItem(TAB_KEY, v))
-watch(collapsed, (v) => localStorage.setItem(COLLAPSED_KEY, v ? '1' : '0'))
+watch(activeTab, (v: string) => localStorage.setItem(TAB_KEY, v))
+watch(collapsed, (v: boolean) => localStorage.setItem(COLLAPSED_KEY, v ? '1' : '0'))
 
-const current = computed(() => tabs.find((t) => t.id === activeTab.value))
+const current = computed<Tab>(() => tabs.find((t: Tab) => t.id === activeTab.value) as Tab)
 </script>
 
 <template>

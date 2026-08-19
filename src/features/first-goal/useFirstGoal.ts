@@ -1,6 +1,7 @@
-import { computed } from 'vue'
-import { persistedList, persistedNumber, nextId } from '../../shared/storage.js'
-import { useCashFlow } from '../cash-flow/useCashFlow.js'
+﻿import { computed } from 'vue'
+import { persistedList, persistedNumber, nextId } from '../../shared/storage'
+import { useCashFlow } from '../cash-flow/useCashFlow'
+import type { Plan } from '../../types'
 
 // 這個 feature 擁有目標金額、保費專戶與規劃快照。
 // 累積資產要靠 cash-flow 的紀錄，所以向它拿。
@@ -12,7 +13,7 @@ const INSURANCE_KEY = 'insurance_fund'
 export const DEFAULT_GOAL = 1000000
 export const INSURANCE_TARGET = 40000
 
-const plans = persistedList(PLANS_KEY)
+const plans = persistedList<Plan>(PLANS_KEY)
 const goal = persistedNumber(GOAL_KEY, DEFAULT_GOAL)
 const insuranceFund = persistedNumber(INSURANCE_KEY, 30000)
 
@@ -32,8 +33,8 @@ const progressPercentage = computed(() => {
 })
 
 // 按下「儲存這份規劃」時產生的快照
-function addPlan(snapshot) {
-  const plan = {
+function addPlan(snapshot: Omit<Plan, 'id' | 'createdAt'>): Plan {
+  const plan: Plan = {
     id: nextId(),
     createdAt: new Date().toISOString(),
     ...snapshot
@@ -42,7 +43,7 @@ function addPlan(snapshot) {
   return plan
 }
 
-function removePlan(id) {
+function removePlan(id: string): void {
   const index = plans.value.findIndex((p) => p.id === id)
   if (index !== -1) plans.value.splice(index, 1)
 }

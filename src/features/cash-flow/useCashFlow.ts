@@ -1,13 +1,14 @@
-import { computed } from 'vue'
-import { persistedList, nextId } from '../../shared/storage.js'
-import { useFixedExpenses } from '../fixed-expense/useFixedExpenses.js'
+﻿import { computed } from 'vue'
+import { persistedList, nextId } from '../../shared/storage'
+import { useFixedExpenses } from '../fixed-expense/useFixedExpenses'
+import type { CashFlowRecord, CashFlowForm } from '../../types'
 
 // 這個 feature 擁有「月現金流紀錄」。固定費用不歸它管，
 // 存檔時向 fixed-expense 要當下的合計與明細。
 
 const RECORDS_KEY = 'finance_records'
 
-const records = persistedList(RECORDS_KEY, {
+const records = persistedList<CashFlowRecord>(RECORDS_KEY, {
   // 舊紀錄沒有 id / createdAt，載入時補上
   revive: (list) =>
     list.map((item) => ({
@@ -35,17 +36,17 @@ const accumulatedSaving = computed(() =>
   )
 )
 
-function findByMonth(month) {
+function findByMonth(month: string): CashFlowRecord | undefined {
   return records.value.find((r) => r.month === month)
 }
 
 const { fixedExpenseTotal, breakdownSnapshot } = useFixedExpenses()
 
-function addRecord(form) {
+function addRecord(form: CashFlowForm): CashFlowRecord {
   // 固定費用一律取當下的項目加總，並留下當時的組成明細
   const fixedExpense = fixedExpenseTotal.value
 
-  const record = {
+  const record: CashFlowRecord = {
     id: nextId(),
     createdAt: new Date().toISOString(),
     month: form.month,
@@ -66,7 +67,7 @@ function addRecord(form) {
   return record
 }
 
-function removeRecord(id) {
+function removeRecord(id: string): void {
   const index = records.value.findIndex((r) => r.id === id)
   if (index !== -1) records.value.splice(index, 1)
 }

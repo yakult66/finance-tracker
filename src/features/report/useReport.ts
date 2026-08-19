@@ -1,18 +1,19 @@
-import { useCashFlow } from '../cash-flow/useCashFlow.js'
-import { useFixedExpenses } from '../fixed-expense/useFixedExpenses.js'
-import { useAllowance } from '../allowance/useAllowance.js'
-import { useFirstGoal } from '../first-goal/useFirstGoal.js'
+﻿import { useCashFlow } from '../cash-flow/useCashFlow'
+import { useFixedExpenses } from '../fixed-expense/useFixedExpenses'
+import { useAllowance } from '../allowance/useAllowance'
+import { useFirstGoal } from '../first-goal/useFirstGoal'
 
 // 報表是唯一需要橫跨所有 feature 的地方，
 // 但它只讀各 feature 對外的介面，不碰它們的儲存細節。
 
 // CSV 欄位跳脫：含逗號、引號、換行時要用雙引號包起來
-function cell(value) {
+function cell(value: unknown): string {
   const s = value === null || value === undefined ? '' : String(value)
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
-const rows = (list) => list.map((r) => r.map(cell).join(',')).join('\n')
+const rows = (list: unknown[][]): string =>
+  list.map((r) => (r as unknown[]).map(cell).join(',')).join('\n')
 
 export function useReport() {
   const cashFlow = useCashFlow()
@@ -21,11 +22,11 @@ export function useReport() {
   const goal = useFirstGoal()
 
   // 單一月份、涵蓋所有功能的報表
-  function monthReportRows(month) {
+  function monthReportRows(month: string): unknown[][] {
     const record = cashFlow.findByMonth(month)
     const spending = allowance.itemsOf(month)
 
-    const out = [
+    const out: unknown[][] = [
       ['財務報表', month],
       ['產生時間', new Date().toLocaleString('zh-TW')],
       []
@@ -50,7 +51,7 @@ export function useReport() {
     if (breakdown.length) {
       out.push(['項目', '金額'])
       breakdown.forEach((b) => out.push([b.name, b.amount]))
-      out.push(['小計', record.fixedExpense])
+      out.push(['小計', record!.fixedExpense])
     } else {
       out.push(['（此紀錄未留存明細）'])
     }
@@ -94,12 +95,12 @@ export function useReport() {
     return out
   }
 
-  function monthReportCsv(month) {
+  function monthReportCsv(month: string): string {
     return rows(monthReportRows(month))
   }
 
   // 全部月份併成一張總表，方便丟進試算軟體比較
-  function allMonthsCsv() {
+  function allMonthsCsv(): string {
     const header = [
       '月份',
       '收入',
@@ -126,7 +127,7 @@ export function useReport() {
   }
 
   // 原始資料備份，可完整還原
-  function backupJson() {
+  function backupJson(): string {
     return JSON.stringify(
       {
         exportedAt: new Date().toISOString(),
@@ -143,9 +144,9 @@ export function useReport() {
     )
   }
 
-  function download(filename, content, type) {
+  function download(filename: string, content: string, type: string): void {
     // Excel 開 CSV 需要 BOM 才不會把中文變亂碼
-    const payload = type.startsWith('text/csv') ? `﻿${content}` : content
+    const payload = type.startsWith('text/csv') ? `\uFEFF${content}` : content
     const url = URL.createObjectURL(new Blob([payload], { type }))
     const a = document.createElement('a')
     a.href = url

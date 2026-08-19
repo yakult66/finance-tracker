@@ -1,4 +1,5 @@
-import { markRaw } from 'vue'
+﻿import { markRaw } from 'vue'
+import type { Tab } from '../types'
 import CashFlowView from '../features/cash-flow/CashFlowView.vue'
 import FixedExpenseView from '../features/fixed-expense/FixedExpenseView.vue'
 import AllowanceView from '../features/allowance/AllowanceView.vue'
@@ -7,7 +8,7 @@ import HistoryView from '../features/history/HistoryView.vue'
 
 // 每個 feature 對外只暴露一個進入畫面，導覽列在這裡組起來。
 // 要加新功能就是新增一個 feature 資料夾，然後在這張表登記一列。
-export const tabs = [
+export const tabs: Tab[] = [
   {
     id: 'cashflow',
     label: '月現金流計算',
