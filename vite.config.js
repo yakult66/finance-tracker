@@ -4,5 +4,5 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
-  base: '/finance-app/',
+  base: process.env.GITHUB_ACTIONS ? '/finance-tracker/' : '/',
 })
