@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import 'primeicons/primeicons.css';
 
 /*
  * 只留最基本的 reset。
@@ -17,4 +18,68 @@
 
 body {
   margin: 0;
+}
+
+/* ===================================================
+ * PrimeVue 尺寸對齊：讓元件跟原本 text-sm 手刻版一致
+ * =================================================== */
+
+/* InputText / InputNumber 的 input 元素：對齊 text-sm + px-3 py-2 */
+.p-inputtext,
+.p-inputnumber-input {
+  font-size: 0.875rem !important; /* text-sm = 14px */
+  padding: 0.5rem 0.75rem !important; /* py-2 px-3 */
+  border-radius: 0.5rem !important; /* rounded-lg */
+  line-height: 1.45 !important;
+}
+
+/* Select（下拉） */
+.p-select {
+  border-radius: 0.5rem !important;
+}
+.p-select-label {
+  font-size: 0.875rem !important;
+  padding: 0.5rem 0.75rem !important;
+}
+
+/* Button：對齊 py-2.5 rounded-xl text-sm */
+.p-button {
+  font-size: 0.875rem !important;
+  padding: 0.625rem 1rem !important;
+  border-radius: 0.75rem !important;
+}
+
+/* Button size="small"：小按鈕（刪除、圖示按鈕） */
+.p-button.p-button-sm,
+.p-button-sm {
+  font-size: 0.75rem !important;
+  padding: 0.25rem 0.5rem !important;
+}
+
+/* ProgressBar 高度 */
+.p-progressbar {
+  height: 0.5rem !important; /* h-2 */
+  border-radius: 9999px !important;
+}
+
+/* Message：對齊 text-xs */
+.p-message {
+  font-size: 0.75rem !important;
+  padding: 0.25rem 0.5rem !important;
+  border-radius: 0.5rem !important;
+}
+
+/* SelectButton：對齊 px-3 py-1.5 rounded-full text-xs */
+.p-selectbutton .p-button {
+  font-size: 0.75rem !important;
+  padding: 0.375rem 0.75rem !important;
+  border-radius: 9999px !important;
+}
+
+/* 強制 primary button 使用 indigo-600 (#4f46e5) */
+:root {
+  --p-primary-500: #4f46e5;
+  --p-primary-600: #4338ca;
+  --p-primary-color: #4f46e5;
+  --p-primary-hover-color: #4338ca;
 }

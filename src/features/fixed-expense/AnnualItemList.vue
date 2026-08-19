@@ -1,6 +1,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useFixedExpenses } from './useFixedExpenses.js'
+import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
+import Select from 'primevue/select'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
 
 const {
   annualItems,
@@ -16,7 +21,14 @@ const {
 const months = Array.from({ length: 12 }, (_, i) => i + 1)
 const days = Array.from({ length: 31 }, (_, i) => i + 1)
 
-const pad = (n) => String(n).padStart(2, '0')
+function pad(n) {
+  return String(n).padStart(2, '0')
+}
+
+// Select options
+const monthOptions = [{ label: '月', value: '' }, ...months.map((m) => ({ label: String(m), value: pad(m) }))]
+const dayOptions = [{ label: '日', value: '' }, ...days.map((d) => ({ label: String(d), value: pad(d) }))]
+
 const duePart = (value, index) => (value ? value.split('-')[index] : '')
 
 // 月或日改動時，另一半沿用原本的值，兩邊都空就當作沒設定
@@ -161,90 +173,94 @@ function coverage(item) {
           <div class="grid grid-cols-2 gap-2">
             <div class="col-span-2">
               <label class="text-xs text-slate-500 mb-1 block">項目名稱</label>
-              <input
-                :value="item.name"
-                type="text"
-                class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
-                @input="updateAnnualItem(item.id, { name: $event.target.value })"
+              <InputText
+                :model-value="item.name"
+                class="w-full text-sm"
+                size="small"
+                @update:model-value="updateAnnualItem(item.id, { name: $event })"
                 @blur="normalizeAnnualItem(item.id)"
-              >
+              />
             </div>
             <div>
               <label class="text-xs text-slate-500 mb-1 block">年度金額</label>
-              <input
-                :value="item.amount"
-                type="number"
-                class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
-                @input="updateAnnualItem(item.id, { amount: $event.target.value })"
+              <InputNumber
+                :model-value="item.amount"
+                :use-grouping="true"
+                class="w-full"
+                input-class="w-full text-sm"
+                size="small"
+                @update:model-value="updateAnnualItem(item.id, { amount: $event })"
                 @blur="normalizeAnnualItem(item.id)"
-              >
+              />
             </div>
             <div>
-              <label class="text-xs text-slate-500 mb-1 block">繳款日（月/日）</label>
+              <label class="text-xs text-slate-500 mb-1 block">繳款日</label>
               <div class="flex items-center gap-1">
-                <select
-                  :value="duePart(item.dueDate, 0)"
-                  class="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-indigo-500"
-                  @change="updateAnnualItem(item.id, { dueDate: setDuePart(item.dueDate, 0, $event.target.value) })"
-                >
-                  <option value="">月</option>
-                  <option v-for="m in months" :key="m" :value="pad(m)">{{ m }}</option>
-                </select>
+                <Select
+                  :model-value="duePart(item.dueDate, 0)"
+                  :options="monthOptions"
+                  option-label="label"
+                  option-value="value"
+                  class="w-full"
+                  size="small"
+                  @update:model-value="updateAnnualItem(item.id, { dueDate: setDuePart(item.dueDate, 0, $event) })"
+                />
                 <span class="text-slate-300 text-xs shrink-0">/</span>
-                <select
-                  :value="duePart(item.dueDate, 1)"
-                  class="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-indigo-500"
-                  @change="updateAnnualItem(item.id, { dueDate: setDuePart(item.dueDate, 1, $event.target.value) })"
-                >
-                  <option value="">日</option>
-                  <option v-for="d in days" :key="d" :value="pad(d)">{{ d }}</option>
-                </select>
+                <Select
+                  :model-value="duePart(item.dueDate, 1)"
+                  :options="dayOptions"
+                  option-label="label"
+                  option-value="value"
+                  class="w-full"
+                  size="small"
+                  @update:model-value="updateAnnualItem(item.id, { dueDate: setDuePart(item.dueDate, 1, $event) })"
+                />
               </div>
             </div>
             <div class="col-span-2">
               <label class="text-xs text-slate-500 mb-1 block">
                 每月預留金額
-                <span class="text-slate-300">（可自訂，不必等於年度 ÷ 12）</span>
+                <span class="text-slate-300">（可自訂，預設是等於年度 ÷ 12）</span>
               </label>
               <div class="flex items-center gap-2">
-                <input
-                  :value="item.monthly"
-                  type="number"
-                  class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold focus:outline-none focus:border-indigo-500"
-                  @input="updateAnnualItem(item.id, { monthly: $event.target.value })"
+                <InputNumber
+                  :model-value="item.monthly"
+                  :use-grouping="true"
+                  class="w-full"
+                  input-class="w-full text-sm font-bold"
+                  size="small"
+                  @update:model-value="updateAnnualItem(item.id, { monthly: $event })"
                   @blur="normalizeAnnualItem(item.id)"
-                >
-                <button
-                  type="button"
-                  class="shrink-0 text-xs text-indigo-600 hover:text-indigo-800 whitespace-nowrap px-2 py-2"
-                  @click="updateAnnualItem(item.id, { monthly: suggestMonthly(item.amount) })"
-                >
-                  ÷12
-                </button>
+                />
               </div>
             </div>
           </div>
 
-          <p
-            v-if="coverage(item)"
-            class="text-[11px] leading-snug"
-            :class="coverage(item).enough ? 'text-emerald-600' : 'text-amber-600'"
-          >
-            到繳款日前約可存 ${{ coverage(item).saved.toLocaleString() }}
-            <template v-if="!coverage(item).enough">
-              ，距離 ${{ Number(item.amount).toLocaleString() }} 還差
-              ${{ (Number(item.amount) - coverage(item).saved).toLocaleString() }}
-            </template>
-            <template v-else>，足夠支付</template>
-          </p>
-
-          <button
-            type="button"
-            class="text-xs text-rose-500 hover:text-rose-700"
-            @click="remove(item)"
-          >
-            刪除這個項目
-          </button>
+          <div class="flex items-center justify-between gap-2 mt-1">
+            <div class="flex-1">
+              <p
+                v-if="coverage(item)"
+                class="text-[11px] leading-snug"
+                :class="coverage(item).enough ? 'text-emerald-600' : 'text-amber-600'"
+              >
+                到繳款日前約可存 ${{ coverage(item).saved.toLocaleString() }}
+                <template v-if="!coverage(item).enough">
+                  ，距離 ${{ Number(item.amount).toLocaleString() }} 還差
+                  ${{ (Number(item.amount) - coverage(item).saved).toLocaleString() }}
+                </template>
+                <template v-else>，足夠支付</template>
+              </p>
+            </div>
+            
+            <Button
+              icon="pi pi-trash"
+              severity="danger"
+              text
+              rounded
+              class="shrink-0 w-8 h-8 p-0"
+              @click="remove(item)"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -257,53 +273,58 @@ function coverage(item) {
     <div class="pt-2 border-t border-slate-50 space-y-2">
       <div class="grid grid-cols-2 gap-2">
         <div class="col-span-2">
-          <input
+          <InputText
             v-model="draft.name"
-            type="text"
             placeholder="項目名稱（例: 汽車保險）"
-            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
-          >
+            class="w-full text-sm"
+            size="small"
+          />
         </div>
-        <input
-          v-model.number="draft.amount"
-          type="number"
+        <InputNumber
+          v-model="draft.amount"
           placeholder="年度金額"
-          class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
-        >
+          :use-grouping="true"
+          class="w-full"
+          input-class="w-full text-sm"
+          size="small"
+        />
         <div class="flex items-center gap-1">
-          <select
+          <Select
             v-model="draft.dueMonth"
-            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-sm text-slate-600 focus:outline-none focus:border-indigo-500"
-          >
-            <option value="">月</option>
-            <option v-for="m in months" :key="m" :value="m">{{ m }}</option>
-          </select>
+            :options="monthOptions"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+            size="small"
+          />
           <span class="text-slate-300 text-xs shrink-0">/</span>
-          <select
+          <Select
             v-model="draft.dueDay"
-            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-sm text-slate-600 focus:outline-none focus:border-indigo-500"
-          >
-            <option value="">日</option>
-            <option v-for="d in days" :key="d" :value="d">{{ d }}</option>
-          </select>
+            :options="dayOptions"
+            option-label="label"
+            option-value="value"
+            class="w-full"
+            size="small"
+          />
         </div>
         <div class="col-span-2 flex items-center gap-2">
-          <input
-            v-model.number="draft.monthly"
-            type="number"
+          <InputNumber
+            v-model="draft.monthly"
             :placeholder="`每月預留（留空＝${draftMonthlyPlaceholder}）`"
-            class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
-          >
-          <button
-            type="button"
-            class="shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm font-medium transition"
+            :use-grouping="true"
+            class="w-full"
+            input-class="w-full text-sm"
+            size="small"
+          />
+          <Button
+            icon="pi pi-plus"
+            size="small"
+            class="shrink-0"
             @click="submit"
-          >
-            ＋
-          </button>
+          />
         </div>
       </div>
-      <p v-if="error" class="text-xs text-rose-500">{{ error }}</p>
+      <Message v-if="error" severity="error" size="small" :closable="false">{{ error }}</Message>
     </div>
   </section>
 </template>

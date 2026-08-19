@@ -2,6 +2,12 @@
 import { ref, computed, watch } from 'vue'
 import { useAllowance } from './useAllowance.js'
 import { useCashFlow } from '../cash-flow/useCashFlow.js'
+import Select from 'primevue/select'
+import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
+import Button from 'primevue/button'
+import ProgressBar from 'primevue/progressbar'
+import Message from 'primevue/message'
 
 const { records } = useCashFlow()
 const {
@@ -33,6 +39,11 @@ const usedPercentage = computed(() => {
   if (budget.value <= 0) return 0
   return Math.min(100, Math.max(0, (spent.value / budget.value) * 100))
 })
+
+// Select 需要 options 格式
+const monthOptions = computed(() =>
+  records.value.map((r) => ({ label: r.month, value: r.month }))
+)
 
 const draft = ref({ name: '', amount: null })
 const error = ref('')
@@ -85,12 +96,14 @@ function formatTime(iso) {
       <section class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
         <div class="flex items-center justify-between gap-2 mb-3">
           <h2 class="text-sm font-semibold text-slate-500">零用金額度</h2>
-          <select
+          <Select
             v-model="selectedMonth"
-            class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-600 focus:outline-none focus:border-indigo-500"
-          >
-            <option v-for="r in records" :key="r.id" :value="r.month">{{ r.month }}</option>
-          </select>
+            :options="monthOptions"
+            option-label="label"
+            option-value="value"
+            class="text-xs"
+            size="small"
+          />
         </div>
 
         <div class="text-2xl font-bold" :class="left >= 0 ? 'text-slate-900' : 'text-rose-500'">
@@ -98,13 +111,14 @@ function formatTime(iso) {
         </div>
         <p class="text-xs text-slate-400 mt-0.5">可用餘額</p>
 
-        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden my-3">
-          <div
-            class="h-full rounded-full transition-all duration-300"
-            :class="left >= 0 ? 'bg-indigo-600' : 'bg-rose-500'"
-            :style="{ width: usedPercentage + '%' }"
-          ></div>
-        </div>
+        <ProgressBar
+          :value="usedPercentage"
+          :show-value="false"
+          class="my-3 h-2"
+          :pt="{
+            value: { class: left >= 0 ? 'bg-indigo-600' : 'bg-rose-500' }
+          }"
+        />
 
         <div class="grid grid-cols-2 gap-2 text-center pt-2 border-t border-slate-50">
           <div>
@@ -116,10 +130,6 @@ function formatTime(iso) {
             <div class="text-sm font-bold text-slate-700">${{ spent.toLocaleString() }}</div>
           </div>
         </div>
-
-        <p class="text-[11px] text-slate-400 mt-3">
-          額度＝{{ selectedMonth }} 現金流的剩餘零用金，會隨該筆紀錄變動。
-        </p>
       </section>
 
       <!-- 支出項目 -->
@@ -131,31 +141,33 @@ function formatTime(iso) {
 
         <div v-if="items.length" class="space-y-2">
           <div v-for="item in items" :key="item.id" class="flex items-center gap-2">
-            <input
-              :value="item.name"
-              type="text"
-              class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
-              @input="updateItem(item.id, { name: $event.target.value })"
+            <InputText
+              :model-value="item.name"
+              class="flex-1 min-w-0 text-sm"
+              size="small"
+              @update:model-value="updateItem(item.id, { name: $event })"
               @blur="normalizeItem(item.id)"
-            >
+            />
             <span class="text-[11px] text-slate-300 shrink-0 w-8 text-right">
               {{ formatTime(item.createdAt) }}
             </span>
-            <input
-              :value="item.amount"
-              type="number"
-              class="w-20 shrink-0 bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-sm text-right focus:outline-none focus:border-indigo-500"
-              @input="updateItem(item.id, { amount: $event.target.value })"
+            <InputNumber
+              :model-value="item.amount"
+              :use-grouping="true"
+              class="w-20 shrink-0"
+              input-class="w-full text-sm text-right"
+              size="small"
+              @update:model-value="updateItem(item.id, { amount: $event })"
               @blur="normalizeItem(item.id)"
-            >
-            <button
-              type="button"
-              class="text-slate-300 hover:text-rose-500 p-1 text-xs shrink-0"
+            />
+            <Button
+              icon="pi pi-times"
+              severity="danger"
+              text
+              size="small"
               :aria-label="`刪除 ${item.name}`"
               @click="remove(item)"
-            >
-              ✕
-            </button>
+            />
           </div>
         </div>
 
@@ -164,30 +176,31 @@ function formatTime(iso) {
         </p>
 
         <div class="flex items-center gap-2 pt-2 border-t border-slate-50">
-          <input
+          <InputText
             v-model="draft.name"
-            type="text"
             placeholder="支出名稱（例: 午餐）"
-            class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+            class="flex-1 min-w-0 text-sm"
+            size="small"
             @keyup.enter="submit"
-          >
-          <input
-            v-model.number="draft.amount"
-            type="number"
+          />
+          <InputNumber
+            :model-value="draft.amount ?? undefined"
             placeholder="金額"
-            class="w-24 shrink-0 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-right focus:outline-none focus:border-indigo-500"
+            :use-grouping="true"
+            class="w-24 shrink-0"
+            input-class="w-full text-sm text-right"
+            size="small"
+            @update:model-value="draft.amount = $event ?? null"
             @keyup.enter="submit"
-          >
-          <button
-            type="button"
-            class="shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg px-3 py-2 text-sm font-medium transition"
+          />
+          <Button
+            icon="pi pi-plus"
+            size="small"
             @click="submit"
-          >
-            ＋
-          </button>
+          />
         </div>
 
-        <p v-if="error" class="text-xs text-rose-500">{{ error }}</p>
+        <Message v-if="error" severity="error" size="small" :closable="false">{{ error }}</Message>
       </section>
     </template>
   </div>

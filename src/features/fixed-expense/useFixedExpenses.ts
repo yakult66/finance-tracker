@@ -1,4 +1,4 @@
-﻿import { computed } from 'vue'
+import { computed } from 'vue'
 import { persistedRef, persistedList, nextId } from '../../shared/storage'
 import type { FixedItem, AnnualItem, BreakdownItem, FixedRow } from '../../types'
 
@@ -26,7 +26,10 @@ export const suggestMonthly = (amount: number | string): number =>
 
 // fallback 用 null 才分得出「沒存過」和「存過但清空了」：前者才給種子資料
 const fixedItems = persistedRef<FixedItem[]>(FIXED_ITEMS_KEY, null as unknown as FixedItem[], {
-  revive: (stored) => (Array.isArray(stored) ? (stored as FixedItem[]) : SEED_FIXED_ITEMS),
+  revive: (stored) => {
+    if (!Array.isArray(stored)) return SEED_FIXED_ITEMS
+    return (stored as FixedItem[]).filter((i) => !i.systemId?.startsWith('ef_'))
+  },
   immediate: true
 })
 
@@ -58,7 +61,8 @@ const fixedRows = computed<FixedRow[]>(() => [
     id: i.id,
     name: i.name,
     amount: i.amount,
-    source: 'monthly'
+    source: 'monthly',
+    systemId: i.systemId
   })),
   ...annualItems.value.map((i): FixedRow => ({
     id: i.id,
@@ -167,6 +171,24 @@ function removeAnnualItem(id: string): void {
   if (index !== -1) annualItems.value.splice(index, 1)
 }
 
+function syncSystemFixedItems(
+  systemPrefix: string,
+  items: Array<{ id: string; name: string; amount: number }>
+): void {
+  // 移除所有該系統前綴的項目
+  fixedItems.value = fixedItems.value.filter((i) => !i.systemId?.startsWith(`${systemPrefix}_`))
+  
+  // 新增項目
+  items.forEach((item) => {
+    fixedItems.value.push({
+      id: nextId(),
+      name: item.name,
+      amount: item.amount,
+      systemId: `${systemPrefix}_${item.id}`
+    })
+  })
+}
+
 export function useFixedExpenses() {
   return {
     fixedItems,
@@ -186,6 +208,7 @@ export function useFixedExpenses() {
     normalizeAnnualItem,
     removeAnnualItem,
     suggestMonthly,
-    normalizeDue
+    normalizeDue,
+    syncSystemFixedItems
   }
 }

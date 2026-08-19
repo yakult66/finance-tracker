@@ -20,12 +20,11 @@ defineEmits(['update:modelValue', 'update:collapsed'])
     >
       <div v-if="!collapsed" class="min-w-0">
         <div class="text-base font-bold text-slate-900 truncate">💰 財務管家</div>
-        <div class="text-xs text-slate-400 mt-0.5 truncate">資料自動儲存於本機</div>
       </div>
       <button
         type="button"
         class="shrink-0 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-1.5 transition"
-        :aria-label="collapsed ? '展開導覽列' : '收合導覽列'"
+        :aria-label="collapsed ? '展開' : '收合'"
         :aria-expanded="!collapsed"
         :title="collapsed ? '展開' : '收合'"
         @click="$emit('update:collapsed', !collapsed)"
