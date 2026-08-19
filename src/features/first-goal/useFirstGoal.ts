@@ -1,28 +1,37 @@
-﻿import { computed } from 'vue'
+import { computed } from 'vue'
 import { persistedList, persistedNumber, nextId } from '../../shared/storage'
 import { useCashFlow } from '../cash-flow/useCashFlow'
-import type { Plan } from '../../types'
+import type { Plan, TransactionRecord } from '../../types'
 
 // 這個 feature 擁有目標金額、保費專戶與規劃快照。
 // 累積資產要靠 cash-flow 的紀錄，所以向它拿。
 
 const PLANS_KEY = 'finance_plans'
 const GOAL_KEY = 'finance_goal'
-const INSURANCE_KEY = 'insurance_fund'
+const INITIAL_BALANCE_KEY = 'finance_first_goal_initial'
+const TRANSACTIONS_KEY = 'finance_first_goal_transactions'
 
 export const DEFAULT_GOAL = 1000000
-export const INSURANCE_TARGET = 40000
 
 const plans = persistedList<Plan>(PLANS_KEY)
 const goal = persistedNumber(GOAL_KEY, DEFAULT_GOAL)
-const insuranceFund = persistedNumber(INSURANCE_KEY, 30000)
+const initialBalance = persistedNumber(INITIAL_BALANCE_KEY, 0)
+const transactions = persistedList<TransactionRecord>(TRANSACTIONS_KEY)
 
-const { accumulatedSaving } = useCashFlow()
+const { accumulatedPureSaving } = useCashFlow()
 
-// 所有月份的「純存錢 + 緊急預備金」+ 保費專戶
-const totalAssets = computed(
-  () => accumulatedSaving.value + Number(insuranceFund.value || 0)
-)
+// 所有月份的「純存錢」 + 初始資金 + 單次存入 - 單次支出
+const totalAssets = computed(() => {
+  let sum = accumulatedPureSaving.value + initialBalance.value
+  transactions.value.forEach((t) => {
+    if (t.type === 'in') {
+      sum += t.amount
+    } else {
+      sum -= t.amount
+    }
+  })
+  return sum
+})
 
 const remainingToGoal = computed(() => Math.max(0, goal.value - totalAssets.value))
 
@@ -48,17 +57,34 @@ function removePlan(id: string): void {
   if (index !== -1) plans.value.splice(index, 1)
 }
 
+function addTransaction(description: string, amount: number, date: string, type: 'in' | 'out') {
+  transactions.value.unshift({
+    id: nextId(),
+    description: description.trim() || (type === 'in' ? '單次存入' : '單次支出'),
+    amount: amount || 0,
+    date: date || new Date().toISOString().split('T')[0],
+    type
+  })
+}
+
+function removeTransaction(id: string) {
+  const idx = transactions.value.findIndex((i) => i.id === id)
+  if (idx !== -1) transactions.value.splice(idx, 1)
+}
+
 export function useFirstGoal() {
   return {
     plans,
     goal,
-    insuranceFund,
+    initialBalance,
+    transactions,
     totalAssets,
     remainingToGoal,
     progressPercentage,
     addPlan,
     removePlan,
-    INSURANCE_TARGET,
+    addTransaction,
+    removeTransaction,
     DEFAULT_GOAL
   }
 }

@@ -6,13 +6,11 @@ import AllowanceView from '../features/allowance/AllowanceView.vue'
 import FirstGoalView from '../features/first-goal/FirstGoalView.vue'
 import HistoryView from '../features/history/HistoryView.vue'
 
-// 每個 feature 對外只暴露一個進入畫面，導覽列在這裡組起來。
-// 要加新功能就是新增一個 feature 資料夾，然後在這張表登記一列。
 export const tabs: Tab[] = [
   {
     id: 'cashflow',
-    label: '月現金流計算',
-    shortLabel: '現金流',
+    label: '薪資分配',
+    shortLabel: '薪資分配',
     icon: '💵',
     component: markRaw(CashFlowView)
   },
@@ -25,23 +23,23 @@ export const tabs: Tab[] = [
   },
   {
     id: 'allowance',
-    label: '零用金計算',
+    label: '零用金',
     shortLabel: '零用金',
     icon: '💸',
     component: markRaw(AllowanceView)
   },
   {
     id: 'goal',
-    label: '第一桶金規劃',
-    shortLabel: '第一桶金',
+    label: '資產規劃',
+    shortLabel: '資產規劃',
     icon: '🎯',
     component: markRaw(FirstGoalView)
   },
   {
     id: 'history',
-    label: '歷史紀錄',
-    shortLabel: '歷史',
-    icon: '📅',
+    label: '紀錄查詢',
+    shortLabel: '紀錄查詢',
+    icon: '📝',
     component: markRaw(HistoryView)
   }
 ]
