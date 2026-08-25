@@ -1,1 +1,8 @@
-// 這裡將放置全域型別定義
+import type { Component } from 'vue'
+
+export interface Tab {
+  id: string
+  label: string
+  icon: string
+  component: Component
+}

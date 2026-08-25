@@ -1,17 +1,60 @@
 <script setup lang="ts">
-// 這是我們全新的起點
+import { ref, computed } from 'vue'
+import AppSidebar from './components/AppSidebar.vue'
+import { tabs } from './app/navigation'
+import type { Tab } from './types'
+
+const activeTabId = ref<string>(tabs[0].id)
+const collapsed = ref(false)
+const mobileOpen = ref(false)
+
+const currentComponent = computed(() => {
+  const tab = tabs.find(t => t.id === activeTabId.value)
+  return tab ? tab.component : null
+})
+
+const currentTabName = computed(() => {
+  const tab = tabs.find(t => t.id === activeTabId.value)
+  return tab ? tab.label : 'Finance Tracker'
+})
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 text-slate-800 p-8 flex items-center justify-center">
-    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 max-w-md w-full text-center">
-      <h1 class="text-2xl font-bold text-slate-700 mb-2">Finance Tracker</h1>
-      <p class="text-sm text-slate-500 mb-6">全新的起點，已經為您清空所有舊有功能模組。</p>
+  <div class="min-h-screen bg-slate-50 text-slate-800 flex">
+    
+    <!-- 側邊欄 -->
+    <AppSidebar 
+      :tabs="tabs" 
+      v-model="activeTabId" 
+      v-model:collapsed="collapsed"
+      v-model:mobileOpen="mobileOpen"
+    />
+
+    <!-- 右側主內容區塊 -->
+    <div 
+      class="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out"
+      :class="collapsed ? 'md:ml-20' : 'md:ml-64'"
+    >
       
-      <!-- 這個區塊留給之後要開發的新元件 -->
-      <div class="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-        <span class="text-slate-400 text-sm">等待新功能的加入...</span>
-      </div>
+      <!-- 手機版專屬頂部列 (包含漢堡選單) -->
+      <header class="md:hidden h-16 bg-white/80 backdrop-blur-xl border-b border-slate-100 sticky top-0 z-30 flex items-center px-4 shrink-0">
+        <button 
+          class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-50 transition-colors mr-3"
+          @click="mobileOpen = true"
+          v-ripple
+        >
+          <i class="pi pi-bars text-xl"></i>
+        </button>
+        <span class="font-bold text-slate-800 text-lg">{{ currentTabName }}</span>
+      </header>
+
+      <!-- 主要內容切換區 -->
+      <main class="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+        <KeepAlive>
+          <component :is="currentComponent" />
+        </KeepAlive>
+      </main>
+
     </div>
   </div>
 </template>
