@@ -6,7 +6,6 @@ import { definePreset } from '@primevue/themes'
 import Aura from '@primevue/themes/aura'
 import Ripple from 'primevue/ripple'
 
-// 把主色調改成跟原本 indigo-600 一致
 const FinancePreset = definePreset(Aura, {
   semantic: {
     primary: {
