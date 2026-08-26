@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useSalaryAllocation } from './useSalaryAllocation'
 
-const { draft, remainingAllowance, isLoading, isSaved, errors, saveAllocation } = useSalaryAllocation()
+const { draft, totalFixedExpenses, remainingAllowance, isLoading, isSaved, errors, saveAllocation } = useSalaryAllocation()
 </script>
 
 <template>
@@ -107,7 +107,7 @@ const { draft, remainingAllowance, isLoading, isSaved, errors, saveAllocation } 
               <label class="text-sm font-medium text-slate-500 flex items-center gap-1">
                 固定費用 <i class="pi pi-lock text-[10px] text-slate-400"></i>
               </label>
-              <span class="text-sm font-medium text-rose-500">-${{ draft.fixedExpenses.toLocaleString() }}</span>
+              <span class="text-sm font-medium text-rose-500">-${{ totalFixedExpenses.toLocaleString() }}</span>
             </div>
 
             <div class="flex items-center justify-between">
