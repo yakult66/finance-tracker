@@ -1,6 +1,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import type { SalaryAllocation } from './interfaces'
 import { useFixedExpenses } from '../fixed-expenses/useFixedExpenses'
+import { useEmergencyFund } from '../emergency-fund/useEmergencyFund'
 
 const STORAGE_KEY = 'finance_salary_allocation'
 const allocationsHistory = ref<SalaryAllocation[]>([])
@@ -46,6 +47,12 @@ export function useSalaryAllocation() {
   const { totalFixedExpenses, processMonthlyPayment } = useFixedExpenses()
   watch(totalFixedExpenses, (newVal) => {
     draft.value.fixedExpenses = newVal
+  }, { immediate: true })
+
+  // 跨模組連動：自動同步緊急備用金每月存入總額與發薪日存入
+  const { activeMonthlyDepositTotal, processSalaryPayment } = useEmergencyFund()
+  watch(activeMonthlyDepositTotal, (newVal) => {
+    draft.value.emergencyFund = newVal
   }, { immediate: true })
 
   // 自動結算：剩餘零用金 = (收入 + 結餘) - (固定 + 緊急 + 投資 + 消費基金)
@@ -117,9 +124,10 @@ export function useSalaryAllocation() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(allocationsHistory.value))
       isSaved.value = true
       
-      // 觸發大額支出的自動扣款 (防呆：內部會檢查 lastProcessedMonth)
+      // 觸發大額支出的自動扣款與緊急備用金定期存入 (防呆：內部會檢查 lastProcessedMonth)
       const currentMonthStr = `${year}-${String(dataToSave.month).padStart(2, '0')}`
       processMonthlyPayment(currentMonthStr)
+      processSalaryPayment(currentMonthStr)
 
       setTimeout(() => {
         isSaved.value = false
@@ -143,7 +151,7 @@ export function useSalaryAllocation() {
       // 找到歷史紀錄，將金額帶入表單
       draft.value = { ...record }
     } else {
-      // 全新月份，清空金額，保留當前年月設定與固定支出連動
+      // 全新月份，清空金額，保留當前年月設定與固定支出/緊急備用金連動
       draft.value = {
         month: month,
         payday: draft.value.payday,
@@ -151,7 +159,7 @@ export function useSalaryAllocation() {
         investment: 0,
         consumerFund: 0,
         fixedExpenses: draft.value.fixedExpenses, // 保留不洗掉，因外部有 watch 在連動
-        emergencyFund: 0,
+        emergencyFund: draft.value.emergencyFund, // 保留不洗掉，因外部有 watch 在連動
         previousBalance: 0
       }
     }
@@ -180,6 +188,7 @@ export function useSalaryAllocation() {
   return {
     draft,
     totalFixedExpenses,
+    activeMonthlyDepositTotal,
     isLoading,
     isSaved,
     errors,

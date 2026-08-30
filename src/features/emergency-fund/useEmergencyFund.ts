@@ -1,0 +1,206 @@
+import { ref, computed, watch } from 'vue'
+import type { EmergencyGoal, EmergencyDepositPlan, EmergencyTransaction } from './interfaces'
+
+const STORAGE_KEY = 'finance_emergency_funds'
+
+const goals = ref<EmergencyGoal[]>([])
+let isInitialized = false
+
+// 提昇為全域 Computed，確保跨模組響應
+const totalCurrentEmergencyFund = computed(() => {
+  return goals.value.reduce((sum, g) => sum + (Number(g.currentAmount) || 0), 0)
+})
+
+const totalTargetEmergencyFund = computed(() => {
+  return goals.value.reduce((sum, g) => sum + (Number(g.targetAmount) || 0), 0)
+})
+
+const overallProgress = computed(() => {
+  if (totalTargetEmergencyFund.value <= 0) return 0
+  return Math.min(100, Math.round((totalCurrentEmergencyFund.value / totalTargetEmergencyFund.value) * 100))
+})
+
+const activeMonthlyDepositTotal = computed(() => {
+  return goals.value.reduce((sum, g) => {
+    const activePlan = g.depositPlans.find(p => p.isActive)
+    return sum + (activePlan ? Number(activePlan.amount) || 0 : 0)
+  }, 0)
+})
+
+export function useEmergencyFund() {
+  const loadData = () => {
+    if (isInitialized) return
+    isInitialized = true
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        goals.value = JSON.parse(stored)
+      }
+    } catch (e) {
+      console.error('載入緊急備用金失敗:', e)
+    }
+  }
+
+  // 自動儲存至 LocalStorage
+  watch(goals, (newVal) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newVal))
+  }, { deep: true })
+
+  // 達標檢查：若已達標則自動將該目標底下所有每月存入設為停用
+  const checkGoalCompletion = (goal: EmergencyGoal) => {
+    if (goal.targetAmount > 0 && goal.currentAmount >= goal.targetAmount) {
+      goal.depositPlans.forEach(p => {
+        p.isActive = false
+      })
+    }
+  }
+
+  // 目標 CRUD
+  const addGoal = (name: string, targetAmount: number = 0) => {
+    const newGoal: EmergencyGoal = {
+      id: crypto.randomUUID(),
+      name,
+      targetAmount,
+      currentAmount: 0,
+      depositPlans: [],
+      transactions: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    }
+    goals.value.push(newGoal)
+  }
+
+  const updateGoal = (id: string, updates: Partial<EmergencyGoal>) => {
+    const goal = goals.value.find(g => g.id === id)
+    if (goal) {
+      Object.assign(goal, updates, { updatedAt: Date.now() })
+      checkGoalCompletion(goal)
+    }
+  }
+
+  const deleteGoal = (id: string) => {
+    const index = goals.value.findIndex(g => g.id === id)
+    if (index !== -1) {
+      goals.value.splice(index, 1)
+    }
+  }
+
+  // 每月存入設定 CRUD
+  const addDepositPlan = (goalId: string, amount: number) => {
+    const goal = goals.value.find(g => g.id === goalId)
+    if (goal) {
+      const newPlan: EmergencyDepositPlan = {
+        id: crypto.randomUUID(),
+        amount,
+        isActive: false,
+        isLocked: false,
+        createdAt: Date.now()
+      }
+      goal.depositPlans.push(newPlan)
+      goal.updatedAt = Date.now()
+    }
+  }
+
+  const saveAndLockDepositPlan = (goalId: string, planId: string) => {
+    const goal = goals.value.find(g => g.id === goalId)
+    if (goal) {
+      const plan = goal.depositPlans.find(p => p.id === planId)
+      if (plan) {
+        plan.isLocked = true
+        goal.updatedAt = Date.now()
+      }
+    }
+  }
+
+  const toggleDepositPlanActive = (goalId: string, planId: string, isActive: boolean) => {
+    const goal = goals.value.find(g => g.id === goalId)
+    if (goal) {
+      goal.depositPlans.forEach(p => {
+        if (p.id === planId) {
+          p.isActive = isActive
+        } else if (isActive) {
+          // 單一啟用互斥：若此項啟用，其他自動停用
+          p.isActive = false
+        }
+      })
+      goal.updatedAt = Date.now()
+    }
+  }
+
+  const deleteDepositPlan = (goalId: string, planId: string) => {
+    const goal = goals.value.find(g => g.id === goalId)
+    if (goal) {
+      const index = goal.depositPlans.findIndex(p => p.id === planId)
+      if (index !== -1) {
+        goal.depositPlans.splice(index, 1)
+        goal.updatedAt = Date.now()
+      }
+    }
+  }
+
+  // 臨時異動紀錄
+  const addTransaction = (goalId: string, tx: Omit<EmergencyTransaction, 'id' | 'createdAt'>) => {
+    const goal = goals.value.find(g => g.id === goalId)
+    if (goal) {
+      const newTx: EmergencyTransaction = {
+        ...tx,
+        id: crypto.randomUUID(),
+        createdAt: Date.now()
+      }
+      goal.transactions.push(newTx)
+      
+      if (tx.type === 'deposit') {
+        goal.currentAmount += tx.amount
+      } else {
+        goal.currentAmount = Math.max(0, goal.currentAmount - tx.amount)
+      }
+      
+      checkGoalCompletion(goal)
+      goal.updatedAt = Date.now()
+    }
+  }
+
+  // 發薪日自動結算
+  const processSalaryPayment = (currentMonthStr: string) => {
+    let hasChanges = false
+    goals.value.forEach(goal => {
+      if (goal.lastProcessedMonth !== currentMonthStr) {
+        const activePlan = goal.depositPlans.find(p => p.isActive)
+        if (activePlan && activePlan.amount > 0) {
+          goal.currentAmount += activePlan.amount
+          goal.transactions.push({
+            id: crypto.randomUUID(),
+            type: 'deposit',
+            name: '每月定期存入 (發薪日)',
+            amount: activePlan.amount,
+            date: new Date().toISOString().split('T')[0],
+            createdAt: Date.now()
+          })
+          goal.lastProcessedMonth = currentMonthStr
+          checkGoalCompletion(goal)
+          goal.updatedAt = Date.now()
+          hasChanges = true
+        }
+      }
+    })
+  }
+
+  loadData()
+
+  return {
+    goals,
+    totalCurrentEmergencyFund,
+    totalTargetEmergencyFund,
+    overallProgress,
+    activeMonthlyDepositTotal,
+    addGoal,
+    updateGoal,
+    deleteGoal,
+    addDepositPlan,
+    saveAndLockDepositPlan,
+    toggleDepositPlanActive,
+    deleteDepositPlan,
+    addTransaction,
+    processSalaryPayment
+  }
+}

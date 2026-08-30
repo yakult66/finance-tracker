@@ -117,9 +117,6 @@ const { draft, totalFixedExpenses, remainingAllowance, isLoading, isSaved, error
               <span class="text-sm font-medium text-blue-500">-${{ draft.emergencyFund.toLocaleString() }}</span>
             </div>
             
-            <div class="text-xs text-slate-400 pt-2 border-t border-slate-200/60 text-center">
-              此區塊未來將由其他模組自動結算帶入
-            </div>
           </div>
 
         </div>
