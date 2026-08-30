@@ -20,6 +20,16 @@ body {
   margin: 0;
 }
 
+/* 隱藏所有數字輸入框的上下調整箭頭 (Spinner Buttons) */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 /* ===================================================
  * PrimeVue 尺寸對齊：讓元件跟原本 text-sm 手刻版一致
  * =================================================== */

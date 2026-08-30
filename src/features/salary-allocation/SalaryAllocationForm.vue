@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useSalaryAllocation } from './useSalaryAllocation'
 
-const { draft, totalFixedExpenses, remainingAllowance, isLoading, isSaved, errors, saveAllocation } = useSalaryAllocation()
+const { draft, totalFixedExpenses, netAmount, isLoading, isSaved, errors, saveAllocation } = useSalaryAllocation()
 </script>
 
 <template>
@@ -92,6 +92,20 @@ const { draft, totalFixedExpenses, remainingAllowance, isLoading, isSaved, error
               </div>
               <p v-if="errors.consumerFund" class="text-xs text-rose-500 mt-1"><i class="pi pi-exclamation-circle mr-1"></i>{{ errors.consumerFund }}</p>
             </div>
+
+            <!-- 新增：零用金欄位 -->
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-slate-600 block">零用金</label>
+              <div class="relative">
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                <input 
+                  type="number" 
+                  v-model="draft.allowance"
+                  class="w-full bg-indigo-50/50 border border-indigo-100 text-slate-800 rounded-xl pl-8 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                >
+              </div>
+              <p v-if="errors.allowance" class="text-xs text-rose-500 mt-1"><i class="pi pi-exclamation-circle mr-1"></i>{{ errors.allowance }}</p>
+            </div>
           </div>
 
           <!-- 唯讀帶入區 -->
@@ -100,7 +114,7 @@ const { draft, totalFixedExpenses, remainingAllowance, isLoading, isSaved, error
               <label class="text-sm font-medium text-slate-500 flex items-center gap-1">
                 上月結餘 <i class="pi pi-lock text-[10px] text-slate-400"></i>
               </label>
-              <span class="text-sm font-medium text-slate-600">${{ draft.previousBalance.toLocaleString() }}</span>
+              <span class="text-sm font-medium text-slate-600">${{ (draft.previousBalance || 0).toLocaleString() }}</span>
             </div>
             
             <div class="flex items-center justify-between">
@@ -114,7 +128,7 @@ const { draft, totalFixedExpenses, remainingAllowance, isLoading, isSaved, error
               <label class="text-sm font-medium text-slate-500 flex items-center gap-1">
                 緊急備用金 <i class="pi pi-lock text-[10px] text-slate-400"></i>
               </label>
-              <span class="text-sm font-medium text-blue-500">-${{ draft.emergencyFund.toLocaleString() }}</span>
+              <span class="text-sm font-medium text-blue-500">-${{ (draft.emergencyFund || 0).toLocaleString() }}</span>
             </div>
             
           </div>
@@ -127,9 +141,9 @@ const { draft, totalFixedExpenses, remainingAllowance, isLoading, isSaved, error
     <!-- 結算結果與儲存 -->
     <div class="bg-white p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border-t-2 border-slate-50/80 rounded-b-3xl">
       <div>
-        <div class="text-slate-500 font-medium text-sm mb-1">本月可動用零用金</div>
-        <div class="text-4xl font-bold tracking-tight drop-shadow-sm" :class="remainingAllowance >= 0 ? 'text-emerald-500' : 'text-rose-500'">
-          ${{ remainingAllowance.toLocaleString() }}
+        <div class="text-slate-500 font-medium text-sm mb-1">本月淨額</div>
+        <div class="text-4xl font-bold tracking-tight drop-shadow-sm" :class="netAmount >= 0 ? 'text-emerald-500' : 'text-rose-500'">
+          ${{ netAmount.toLocaleString() }}
         </div>
       </div>
       

@@ -38,44 +38,79 @@ export function useSalaryAllocation() {
     income: 0,
     investment: 0,
     consumerFund: 0,
+    allowance: 0,
     fixedExpenses: 0,
     emergencyFund: 0,
-    previousBalance: 0
+    previousBalance: 0,
+    fixedExpensesSnapshot: []
   })
 
-  // 跨模組連動：自動同步固定支出總和與發薪日扣款
-  const { totalFixedExpenses, processMonthlyPayment } = useFixedExpenses()
+  // 輔助函式：推算「上月結餘 = 上月零用金 + 上月淨額」
+  const calculatePreviousBalance = (year: number, month: number): number => {
+    let prevYear = year
+    let prevMonth = month - 1
+    if (prevMonth < 1) {
+      prevMonth = 12
+      prevYear = year - 1
+    }
+
+    const prevRecord = allocationsHistory.value.find(a => {
+      const rYear = new Date(a.payday).getFullYear()
+      return rYear === prevYear && a.month === prevMonth
+    })
+
+    if (!prevRecord) return 0
+
+    const prevIncome = Number(prevRecord.income || 0)
+    const prevPrevBal = Number(prevRecord.previousBalance || 0)
+    const prevFixed = Number(prevRecord.fixedExpenses || 0)
+    const prevEmergency = Number(prevRecord.emergencyFund || 0)
+    const prevInv = Number(prevRecord.investment || 0)
+    const prevCons = Number(prevRecord.consumerFund || 0)
+    const prevAllow = Number(prevRecord.allowance || 0)
+
+    // 上月淨額
+    const prevNet = (prevIncome + prevPrevBal) - (prevFixed + prevEmergency + prevInv + prevCons + prevAllow)
+
+    // 上月結餘 = 上月零用金 + 上月淨額
+    return prevAllow + prevNet
+  }
+
+  // 跨模組連動：自動同步固定支出總和
+  const { fixedExpenses, totalFixedExpenses, processMonthlyPayment } = useFixedExpenses()
   watch(totalFixedExpenses, (newVal) => {
-    draft.value.fixedExpenses = newVal
+    if (!draft.value.fixedExpensesSnapshot || draft.value.fixedExpensesSnapshot.length === 0) {
+      draft.value.fixedExpenses = newVal
+    }
   }, { immediate: true })
 
-  // 跨模組連動：自動同步緊急備用金每月存入總額與發薪日存入
+  // 跨模組連動：自動同步緊急備用金每月存入總額
   const { activeMonthlyDepositTotal, processSalaryPayment } = useEmergencyFund()
   watch(activeMonthlyDepositTotal, (newVal) => {
     draft.value.emergencyFund = newVal
   }, { immediate: true })
 
-  // 自動結算：剩餘零用金 = (收入 + 結餘) - (固定 + 緊急 + 投資 + 消費基金)
-  const remainingAllowance = computed(() => {
-    return (draft.value.income + draft.value.previousBalance) - 
-           (totalFixedExpenses.value + draft.value.emergencyFund + draft.value.investment + draft.value.consumerFund)
+  // 自動結算：淨額 = (收入 + 上月結餘) - (固定支出 + 緊急備用金 + 投資理財 + 消費基金 + 零用金)
+  const netAmount = computed(() => {
+    return (Number(draft.value.income || 0) + Number(draft.value.previousBalance || 0)) - 
+           (Number(draft.value.fixedExpenses || 0) + Number(draft.value.emergencyFund || 0) + Number(draft.value.investment || 0) + Number(draft.value.consumerFund || 0) + Number(draft.value.allowance || 0))
   })
+
+  // 相容舊語法
+  const remainingAllowance = netAmount
 
   // 驗證表單
   const validate = () => {
     errors.value = {}
     
-    // 月份：1 到 12
     if (!/^(1[0-2]|[1-9])$/.test(String(draft.value.month))) {
       errors.value.month = '請輸入正確的月份 (1-12)'
     }
     
-    // 發薪日：YYYY-MM-DD
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(draft.value.payday))) {
       errors.value.payday = '發薪日格式錯誤 (年份只能為四碼)'
     }
     
-    // 金額：非負整數或浮點數
     if (!/^\d+(\.\d+)?$/.test(String(draft.value.income))) {
       errors.value.income = '薪資收入不可為負數'
     }
@@ -87,11 +122,15 @@ export function useSalaryAllocation() {
     if (!/^\d+(\.\d+)?$/.test(String(draft.value.consumerFund))) {
       errors.value.consumerFund = '消費基金金額不可為負數'
     }
+
+    if (!/^\d+(\.\d+)?$/.test(String(draft.value.allowance))) {
+      errors.value.allowance = '零用金不可為負數'
+    }
     
     return Object.keys(errors.value).length === 0
   }
 
-  // 儲存至 LocalStorage
+  // 儲存至 LocalStorage 與 MongoDB Atlas (要求1: 按儲存後欄位值都清空/不要)
   const saveAllocation = async () => {
     if (!validate()) return
 
@@ -101,7 +140,7 @@ export function useSalaryAllocation() {
     try {
       await new Promise(resolve => setTimeout(resolve, 300))
       
-      const dataToSave = {
+      const dataToSave: SalaryAllocation = {
         ...draft.value,
         createdAt: draft.value.createdAt || Date.now(),
         updatedAt: Date.now()
@@ -113,21 +152,32 @@ export function useSalaryAllocation() {
       )
       
       if (existingIndex !== -1) {
-        // 更新現有月份紀錄
         allocationsHistory.value[existingIndex] = dataToSave
       } else {
-        // 新增全新月份紀錄
         dataToSave.id = crypto.randomUUID()
         allocationsHistory.value.push(dataToSave)
       }
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(allocationsHistory.value))
+
+      await fetchApi('/api/salary-allocation', {
+        method: 'POST',
+        body: JSON.stringify(allocationsHistory.value)
+      })
       isSaved.value = true
       
-      // 觸發大額支出的自動扣款與緊急備用金定期存入 (防呆：內部會檢查 lastProcessedMonth)
       const currentMonthStr = `${year}-${String(dataToSave.month).padStart(2, '0')}`
       processMonthlyPayment(currentMonthStr)
       processSalaryPayment(currentMonthStr)
+
+      // 【需求1】按儲存後，將填寫欄位值清空
+      draft.value.income = 0
+      draft.value.investment = 0
+      draft.value.consumerFund = 0
+      draft.value.allowance = 0
+
+      // 重新推算下一次的上月結餘
+      draft.value.previousBalance = calculatePreviousBalance(year, draft.value.month)
 
       setTimeout(() => {
         isSaved.value = false
@@ -143,44 +193,62 @@ export function useSalaryAllocation() {
   const loadDraftForCurrentMonth = () => {
     const year = new Date(draft.value.payday).getFullYear()
     const month = draft.value.month
+    
+    // 【需求3】推算上月結餘 = 上月零用金 + 上月淨額
+    const calculatedPrevBalance = calculatePreviousBalance(year, month)
+
     const record = allocationsHistory.value.find(a => 
       new Date(a.payday).getFullYear() === year && a.month === month
     )
     
     if (record) {
-      // 找到歷史紀錄，將金額帶入表單
-      draft.value = { ...record }
+      draft.value = { 
+        ...record,
+        allowance: record.allowance || 0,
+        previousBalance: calculatedPrevBalance || record.previousBalance || 0,
+        fixedExpensesSnapshot: record.fixedExpensesSnapshot ? [...record.fixedExpensesSnapshot] : []
+      }
     } else {
-      // 全新月份，清空金額，保留當前年月設定與固定支出/緊急備用金連動
+      const snapshot = fixedExpenses.value.map(item => ({
+        id: crypto.randomUUID(),
+        name: item.name,
+        amount: item.amount,
+        linkedLargeExpenseId: item.linkedLargeExpenseId
+      }))
+
       draft.value = {
         month: month,
         payday: draft.value.payday,
         income: 0,
         investment: 0,
         consumerFund: 0,
-        fixedExpenses: draft.value.fixedExpenses, // 保留不洗掉，因外部有 watch 在連動
-        emergencyFund: draft.value.emergencyFund, // 保留不洗掉，因外部有 watch 在連動
-        previousBalance: 0
+        allowance: 0,
+        fixedExpenses: totalFixedExpenses.value,
+        emergencyFund: draft.value.emergencyFund,
+        previousBalance: calculatedPrevBalance,
+        fixedExpensesSnapshot: snapshot
       }
     }
-    // 切換月份後，將儲存狀態歸零
     isSaved.value = false
   }
 
-  // 監聽年份與月份變化 (切換時自動讀取)
+  // 監聽年份與月份變化 (切換時自動讀取與推算上月結餘)
   watch(() => [draft.value.month, new Date(draft.value.payday).getFullYear()], (newVals, oldVals) => {
-    // 只有當月份或年份真的改變時才觸發 (避免其他屬性變更誤觸)
     if (newVals[0] !== oldVals[0] || newVals[1] !== oldVals[1]) {
       loadDraftForCurrentMonth()
     }
   })
 
-  // 元件掛載時，先根據預設月份載入一次
+  // 監聽歷史紀錄變動，時時更新上月結餘推算
+  watch(allocationsHistory, () => {
+    const year = new Date(draft.value.payday).getFullYear()
+    draft.value.previousBalance = calculatePreviousBalance(year, draft.value.month)
+  }, { deep: true })
+
   onMounted(() => {
     loadDraftForCurrentMonth()
   })
 
-  // 如果使用者修改資料，就取消「已儲存」的綠色狀態
   watch(draft, () => {
     isSaved.value = false
   }, { deep: true })
@@ -192,8 +260,11 @@ export function useSalaryAllocation() {
     isLoading,
     isSaved,
     errors,
+    netAmount,
     remainingAllowance,
     saveAllocation,
-    allocationsHistory
+    allocationsHistory,
+    loadDraftForCurrentMonth,
+    calculatePreviousBalance
   }
 }
