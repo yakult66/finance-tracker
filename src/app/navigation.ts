@@ -3,7 +3,7 @@ import type { Tab } from '../types'
 
 import SalaryAllocationView from '../views/SalaryAllocationView.vue'
 import AssetAllocationView from '../views/AssetAllocationView.vue'
-import WealthManagementView from '../views/WealthManagementView.vue'
+import PocketMoneyView from '../views/PocketMoneyView.vue'
 
 export const tabs: Tab[] = [
   {
@@ -19,9 +19,9 @@ export const tabs: Tab[] = [
     component: markRaw(AssetAllocationView)
   },
   {
-    id: 'wealth-management',
-    label: '理財',
+    id: 'pocket-money',
+    label: '零用金',
     icon: 'pi-sparkles',
-    component: markRaw(WealthManagementView)
+    component: markRaw(PocketMoneyView)
   }
 ]

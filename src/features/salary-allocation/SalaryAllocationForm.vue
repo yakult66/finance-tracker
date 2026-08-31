@@ -150,7 +150,7 @@ const { draft, totalFixedExpenses, netAmount, isLoading, isSaved, errors, saveAl
       <button 
         @click="saveAllocation"
         :disabled="isLoading"
-        class="bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white px-8 py-3 rounded-xl font-medium transition-colors flex items-center justify-center min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
+        class="bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white px-8 py-3 rounded-xl font-medium transition-colors flex items-center justify-center min-w-35 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
         v-ripple
       >
         <template v-if="isLoading">

@@ -313,7 +313,7 @@ const deleteRecord = async (id?: string) => {
                 :key="item.id || item.name"
                 class="bg-white p-2.5 rounded-xl border border-slate-200/60 flex items-center justify-between text-xs"
               >
-                <span class="text-slate-700 font-medium truncate max-w-[140px]">{{ item.name }}</span>
+                <span class="text-slate-700 font-medium truncate max-w-35">{{ item.name }}</span>
                 <div class="relative w-28">
                   <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400">$</span>
                   <input 

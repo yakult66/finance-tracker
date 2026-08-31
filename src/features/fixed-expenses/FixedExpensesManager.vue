@@ -182,7 +182,7 @@ const getRemaining = (exp: LargeExpense) => Math.max(0, exp.totalAmount - exp.ac
                     type="number" 
                     v-model.number="tempAmounts[expense.id]" 
                     placeholder="金額" 
-                    class="w-full min-w-[70px] bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-sm"
+                    class="w-full min-w-17.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none text-sm"
                   >
                   <button @click="submitTempAmount(expense.id)" :disabled="!tempAmounts[expense.id]" class="px-2.5 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white rounded-lg transition-colors">
                     <i class="pi pi-plus text-xs"></i>
@@ -224,7 +224,7 @@ const getRemaining = (exp: LargeExpense) => Math.max(0, exp.totalAmount - exp.ac
               </div>
             </div>
 
-            <div class="flex items-center h-[42px] px-2">
+            <div class="flex items-center h-10.5 px-2">
               <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-600 font-medium select-none">
                 <input type="checkbox" v-model="newLargeIsAveraged" class="w-4 h-4 rounded text-indigo-500 focus:ring-indigo-500/20 border-slate-300">
                 自動均攤至固定支出

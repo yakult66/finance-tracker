@@ -2,11 +2,12 @@ import { ref, computed, watch, onMounted } from 'vue'
 import type { SalaryAllocation } from './interfaces'
 import { useFixedExpenses } from '../fixed-expenses/useFixedExpenses'
 import { useEmergencyFund } from '../emergency-fund/useEmergencyFund'
+import { calculateUnspentAllowance } from '../pocket-money/usePocketMoney'
 
 import { fetchApi } from '../../shared/api'
 
 const STORAGE_KEY = 'finance_salary_allocation'
-const allocationsHistory = ref<SalaryAllocation[]>([])
+export const allocationsHistory = ref<SalaryAllocation[]>([])
 
 // 初始載入與無痛資料轉移 (Migration + MongoDB Sync)
 const loadHistory = async () => {
@@ -53,7 +54,7 @@ export function useSalaryAllocation() {
     fixedExpensesSnapshot: []
   })
 
-  // 輔助函式：推算「上月結餘 = 上月零用金 + 上月淨額」
+  // 輔助函式：推算「上月結餘 = 上月剩餘未花完零用金 + 上月淨額」
   const calculatePreviousBalance = (year: number, month: number): number => {
     let prevYear = year
     let prevMonth = month - 1
@@ -80,8 +81,11 @@ export function useSalaryAllocation() {
     // 上月淨額
     const prevNet = (prevIncome + prevPrevBal) - (prevFixed + prevEmergency + prevInv + prevCons + prevAllow)
 
-    // 上月結餘 = 上月零用金 + 上月淨額
-    return prevAllow + prevNet
+    // 上月未花完零用金
+    const unspent = calculateUnspentAllowance(prevYear, prevMonth, prevAllow)
+
+    // 上月結餘 = 剩餘未花完零用金 + 上月淨額
+    return unspent + prevNet
   }
 
   // 跨模組連動：自動同步固定支出總和
