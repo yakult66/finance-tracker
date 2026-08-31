@@ -97,6 +97,45 @@ const EmergencyGoalSchema = new Schema<IEmergencyGoal>({
 
 export const EmergencyGoalModel = mongoose.models.EmergencyGoal || mongoose.model<IEmergencyGoal>('EmergencyGoal', EmergencyGoalSchema)
 
+// === 4. Pocket Money Schema & Model ===
+export interface IPocketMoneyTransaction {
+  id: string
+  type: 'income' | 'expense'
+  category: '餐費' | '交通' | '遠程交通' | '旅遊' | '娛樂' | '其他'
+  name: string
+  amount: number
+  date: string
+  createdAt: number
+}
+
+export interface IPocketMoney extends Document {
+  id: string
+  year: number
+  month: number
+  allocatedAllowance: number
+  transactions: IPocketMoneyTransaction[]
+}
+
+const PocketMoneyTransactionSchema = new Schema<IPocketMoneyTransaction>({
+  id: { type: String, required: true },
+  type: { type: String, enum: ['income', 'expense'], required: true },
+  category: { type: String, enum: ['餐費', '交通', '遠程交通', '旅遊', '娛樂', '其他'], required: true },
+  name: { type: String, required: true },
+  amount: { type: Number, required: true },
+  date: { type: String, required: true },
+  createdAt: { type: Number, default: () => Date.now() }
+})
+
+const PocketMoneySchema = new Schema<IPocketMoney>({
+  id: { type: String, required: true, unique: true },
+  year: { type: Number, required: true },
+  month: { type: Number, required: true },
+  allocatedAllowance: { type: Number, default: 0 },
+  transactions: [PocketMoneyTransactionSchema]
+}, { timestamps: true })
+
+export const PocketMoneyModel = mongoose.models.PocketMoney || mongoose.model<IPocketMoney>('PocketMoney', PocketMoneySchema)
+
 // === Express App & DB Connection ===
 export const app = express()
 
@@ -221,6 +260,38 @@ app.post('/api/emergency-fund', async (req, res) => {
       const updated = await EmergencyGoalModel.findOneAndUpdate(
         { id: goals.id },
         goals,
+        { upsert: true, returnDocument: 'after' }
+      )
+      return res.json(updated)
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// === 4. 零用金 Pocket Money API ===
+app.get('/api/pocket-money', async (req, res) => {
+  try {
+    await connectDb()
+    const records = await PocketMoneyModel.find({}).lean()
+    res.json(records)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.post('/api/pocket-money', async (req, res) => {
+  try {
+    await connectDb()
+    const records = req.body
+    if (Array.isArray(records)) {
+      await PocketMoneyModel.deleteMany({})
+      const saved = records.length > 0 ? await PocketMoneyModel.insertMany(records) : []
+      return res.json(saved)
+    } else {
+      const updated = await PocketMoneyModel.findOneAndUpdate(
+        { id: records.id },
+        records,
         { upsert: true, returnDocument: 'after' }
       )
       return res.json(updated)
