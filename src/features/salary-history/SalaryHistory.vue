@@ -273,7 +273,7 @@ const deleteRecord = async (id?: string) => {
 
         <!-- 編輯表單欄位 -->
         <div class="space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div class="space-y-1">
               <label class="text-xs font-semibold text-slate-600">薪資收入</label>
               <input type="number" v-model="editingDraft.income" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm">
@@ -292,6 +292,11 @@ const deleteRecord = async (id?: string) => {
             <div class="space-y-1">
               <label class="text-xs font-semibold text-slate-600">零用金</label>
               <input type="number" v-model="editingDraft.allowance" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm">
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-xs font-semibold text-slate-600">緊急備用金</label>
+              <input type="number" v-model="editingDraft.emergencyFund" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm">
             </div>
           </div>
 

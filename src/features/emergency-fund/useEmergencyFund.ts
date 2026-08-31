@@ -27,8 +27,19 @@ const activeMonthlyDepositTotal = computed(() => {
   }, 0)
 })
 
+import { fetchApi } from '../../shared/api'
+
+// 自動儲存至 LocalStorage 與 MongoDB Atlas (Module Singleton Watcher)
+watch(goals, (newVal) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(newVal))
+  fetchApi('/api/emergency-fund', {
+    method: 'POST',
+    body: JSON.stringify(newVal)
+  })
+}, { deep: true })
+
 export function useEmergencyFund() {
-  const loadData = () => {
+  const loadData = async () => {
     if (isInitialized) return
     isInitialized = true
     try {
@@ -36,15 +47,17 @@ export function useEmergencyFund() {
       if (stored) {
         goals.value = JSON.parse(stored)
       }
+
+      // 同步 MongoDB Atlas 雲端資料
+      const remoteGoals = await fetchApi<EmergencyGoal[]>('/api/emergency-fund')
+      if (remoteGoals !== null) {
+        goals.value = remoteGoals
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteGoals))
+      }
     } catch (e) {
       console.error('載入緊急備用金失敗:', e)
     }
   }
-
-  // 自動儲存至 LocalStorage
-  watch(goals, (newVal) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newVal))
-  }, { deep: true })
 
   // 達標檢查：若已達標則自動將該目標底下所有每月存入設為停用
   const checkGoalCompletion = (goal: EmergencyGoal) => {

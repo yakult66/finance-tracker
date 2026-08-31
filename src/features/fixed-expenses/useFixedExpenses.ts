@@ -1,5 +1,6 @@
 import { ref, watch, computed } from 'vue'
 import type { FixedExpense, LargeExpense } from './interfaces'
+import { fetchApi } from '../../shared/api'
 
 const FIXED_STORAGE_KEY = 'finance_fixed_expenses'
 const LARGE_STORAGE_KEY = 'finance_large_expenses'
@@ -12,6 +13,23 @@ let isInitialized = false
 const totalFixedExpenses = computed(() => {
   return fixedExpenses.value.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
 })
+
+// 單例全域自動儲存至 LocalStorage 與 MongoDB Atlas
+watch(fixedExpenses, (newVal) => {
+  localStorage.setItem(FIXED_STORAGE_KEY, JSON.stringify(newVal))
+  fetchApi('/api/fixed-expenses', {
+    method: 'POST',
+    body: JSON.stringify({ monthly: fixedExpenses.value, annual: largeExpenses.value })
+  })
+}, { deep: true })
+
+watch(largeExpenses, (newVal) => {
+  localStorage.setItem(LARGE_STORAGE_KEY, JSON.stringify(newVal))
+  fetchApi('/api/fixed-expenses', {
+    method: 'POST',
+    body: JSON.stringify({ monthly: fixedExpenses.value, annual: largeExpenses.value })
+  })
+}, { deep: true })
 
 export function useFixedExpenses() {
   // 檢查並執行自動展期 (Rollover)
@@ -58,7 +76,7 @@ export function useFixedExpenses() {
   }
 
   // 載入資料 (只在第一次被呼叫時執行)
-  const loadData = () => {
+  const loadData = async () => {
     if (isInitialized) return
     isInitialized = true
     try {
@@ -70,6 +88,15 @@ export function useFixedExpenses() {
         largeExpenses.value = JSON.parse(largeStored)
         checkAndRollover()
       }
+
+      // 同步 MongoDB 雲端資料
+      const remoteData = await fetchApi<any>('/api/fixed-expenses')
+      if (remoteData !== null) {
+        if (Array.isArray(remoteData.monthly)) fixedExpenses.value = remoteData.monthly
+        if (Array.isArray(remoteData.annual)) largeExpenses.value = remoteData.annual
+        localStorage.setItem(FIXED_STORAGE_KEY, JSON.stringify(fixedExpenses.value))
+        localStorage.setItem(LARGE_STORAGE_KEY, JSON.stringify(largeExpenses.value))
+      }
     } catch (e) {
       console.error('Failed to load expenses:', e)
     }
@@ -80,18 +107,8 @@ export function useFixedExpenses() {
     const now = new Date()
     const currentYear = now.getFullYear()
     const currentMonth = now.getMonth() + 1
-    // 若設定的月份 <= 當前月份 (例如現在 8月，設定 8月)，代表今年的已繳，開始存明年的
     return targetMonth <= currentMonth ? currentYear + 1 : currentYear
   }
-
-  // 自動儲存
-  watch(fixedExpenses, (newVal) => {
-    localStorage.setItem(FIXED_STORAGE_KEY, JSON.stringify(newVal))
-  }, { deep: true })
-
-  watch(largeExpenses, (newVal) => {
-    localStorage.setItem(LARGE_STORAGE_KEY, JSON.stringify(newVal))
-  }, { deep: true })
 
   // 輔助函式：計算到繳款前一個月還有幾期 (至少為 1)
   const calculateInstallments = (paymentMonthStr: string): number => {

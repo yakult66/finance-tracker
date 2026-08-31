@@ -3,22 +3,30 @@ import type { SalaryAllocation } from './interfaces'
 import { useFixedExpenses } from '../fixed-expenses/useFixedExpenses'
 import { useEmergencyFund } from '../emergency-fund/useEmergencyFund'
 
+import { fetchApi } from '../../shared/api'
+
 const STORAGE_KEY = 'finance_salary_allocation'
 const allocationsHistory = ref<SalaryAllocation[]>([])
 
-// 初始載入與無痛資料轉移 (Migration)
-const loadHistory = () => {
+// 初始載入與無痛資料轉移 (Migration + MongoDB Sync)
+const loadHistory = async () => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
-      // 如果是舊版單一物件，轉成陣列
       if (!Array.isArray(parsed) && parsed.month !== undefined) {
         allocationsHistory.value = [parsed]
         localStorage.setItem(STORAGE_KEY, JSON.stringify(allocationsHistory.value))
       } else if (Array.isArray(parsed)) {
         allocationsHistory.value = parsed
       }
+    }
+
+    // 連線 MongoDB 雲端資料庫進行同步
+    const remoteData = await fetchApi<SalaryAllocation[]>('/api/salary-allocation')
+    if (remoteData !== null) {
+      allocationsHistory.value = remoteData
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteData))
     }
   } catch (e) {
     console.error('歷史紀錄載入失敗:', e)
@@ -159,7 +167,8 @@ export function useSalaryAllocation() {
       }
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(allocationsHistory.value))
-
+      
+      // 同步至 MongoDB Atlas 雲端資料庫
       await fetchApi('/api/salary-allocation', {
         method: 'POST',
         body: JSON.stringify(allocationsHistory.value)
