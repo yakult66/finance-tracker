@@ -136,6 +136,76 @@ const PocketMoneySchema = new Schema<IPocketMoney>({
 
 export const PocketMoneyModel = mongoose.models.PocketMoney || mongoose.model<IPocketMoney>('PocketMoney', PocketMoneySchema)
 
+// === 5. Investment Plan Schema & Model ===
+export interface IInvestmentTransaction {
+  id: string
+  type: 'deposit' | 'expense'
+  name: string
+  amount: number
+  date: string
+  createdAt: number
+}
+
+export interface IInvestmentPlan extends Document {
+  id: string
+  targetAmount: number
+  transactions: IInvestmentTransaction[]
+  createdAt?: number
+  updatedAt?: number
+}
+
+const InvestmentTransactionSchema = new Schema<IInvestmentTransaction>({
+  id: { type: String, required: true },
+  type: { type: String, enum: ['deposit', 'expense'], required: true },
+  name: { type: String, required: true },
+  amount: { type: Number, required: true },
+  date: { type: String, required: true },
+  createdAt: { type: Number, default: () => Date.now() }
+})
+
+const InvestmentPlanSchema = new Schema<IInvestmentPlan>({
+  id: { type: String, required: true, unique: true },
+  targetAmount: { type: Number, default: 0 },
+  transactions: [InvestmentTransactionSchema]
+}, { timestamps: true })
+
+export const InvestmentPlanModel = mongoose.models.InvestmentPlan || mongoose.model<IInvestmentPlan>('InvestmentPlan', InvestmentPlanSchema)
+
+// === 6. Entertainment Fund Schema & Model ===
+export interface IEntertainmentTransaction {
+  id: string
+  type: 'deposit' | 'expense'
+  name: string
+  amount: number
+  date: string
+  createdAt: number
+}
+
+export interface IEntertainmentFund extends Document {
+  id: string
+  targetAmount?: number
+  transactions: IEntertainmentTransaction[]
+  createdAt?: number
+  updatedAt?: number
+}
+
+const EntertainmentTransactionSchema = new Schema<IEntertainmentTransaction>({
+  id: { type: String, required: true },
+  type: { type: String, enum: ['deposit', 'expense'], required: true },
+  name: { type: String, required: true },
+  amount: { type: Number, required: true },
+  date: { type: String, required: true },
+  createdAt: { type: Number, default: () => Date.now() }
+})
+
+const EntertainmentFundSchema = new Schema<IEntertainmentFund>({
+  id: { type: String, required: true, unique: true },
+  targetAmount: { type: Number, default: 0 },
+  transactions: [EntertainmentTransactionSchema]
+}, { timestamps: true })
+
+export const EntertainmentFundModel = mongoose.models.EntertainmentFund || mongoose.model<IEntertainmentFund>('EntertainmentFund', EntertainmentFundSchema)
+
 // === Express App & DB Connection ===
 export const app = express()
 
@@ -296,6 +366,58 @@ app.post('/api/pocket-money', async (req, res) => {
       )
       return res.json(updated)
     }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// === 5. 投資規劃 Investment Plan API ===
+app.get('/api/investment-plan', async (req, res) => {
+  try {
+    await connectDb()
+    const data = await InvestmentPlanModel.findOne({}).lean()
+    res.json(data || null)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.post('/api/investment-plan', async (req, res) => {
+  try {
+    await connectDb()
+    const payload = req.body
+    const updated = await InvestmentPlanModel.findOneAndUpdate(
+      { id: payload.id || 'default_investment_plan' },
+      payload,
+      { upsert: true, returnDocument: 'after' }
+    )
+    res.json(updated)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// === 6. 娛樂基金 Entertainment Fund API ===
+app.get('/api/entertainment-fund', async (req, res) => {
+  try {
+    await connectDb()
+    const data = await EntertainmentFundModel.findOne({}).lean()
+    res.json(data || null)
+  } catch (err: any) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.post('/api/entertainment-fund', async (req, res) => {
+  try {
+    await connectDb()
+    const payload = req.body
+    const updated = await EntertainmentFundModel.findOneAndUpdate(
+      { id: payload.id || 'default_entertainment_fund' },
+      payload,
+      { upsert: true, returnDocument: 'after' }
+    )
+    res.json(updated)
   } catch (err: any) {
     res.status(500).json({ error: err.message })
   }
