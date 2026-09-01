@@ -1,5 +1,6 @@
 import { ref, computed, watch } from 'vue'
 import type { EmergencyGoal, EmergencyDepositPlan, EmergencyTransaction } from './interfaces'
+import { fetchApi } from '../../shared/api'
 
 const STORAGE_KEY = 'finance_emergency_funds'
 
@@ -27,8 +28,6 @@ const activeMonthlyDepositTotal = computed(() => {
   }, 0)
 })
 
-import { fetchApi } from '../../shared/api'
-
 // 自動儲存至 LocalStorage 與 MongoDB Atlas (Module Singleton Watcher)
 watch(goals, (newVal) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(newVal))
@@ -39,6 +38,49 @@ watch(goals, (newVal) => {
 }, { deep: true })
 
 export function useEmergencyFund() {
+  // 自動清理重複的發薪日存入紀錄並校正金額
+  const deduplicateEmergencyTransactions = () => {
+    let hasCleaned = false
+    goals.value.forEach(goal => {
+      const seenMonths = new Set<string>()
+      const cleanedTransactions: EmergencyTransaction[] = []
+
+      goal.transactions.forEach(tx => {
+        if (tx.name === '每月定期存入 (發薪日)' && tx.type === 'deposit') {
+          const monthKey = tx.date.substring(0, 7) // YYYY-MM
+          if (seenMonths.has(monthKey)) {
+            // 已存在同月份的發薪日存入紀錄，自動濾除重複項目
+            hasCleaned = true
+            return
+          }
+          seenMonths.add(monthKey)
+        }
+        cleanedTransactions.push(tx)
+      })
+
+      if (hasCleaned) {
+        goal.transactions = cleanedTransactions
+        const depositTotal = cleanedTransactions
+          .filter(t => t.type === 'deposit')
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0)
+        const expenseTotal = cleanedTransactions
+          .filter(t => t.type === 'expense')
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0)
+        
+        goal.currentAmount = Math.max(0, depositTotal - expenseTotal)
+        goal.updatedAt = Date.now()
+      }
+    })
+
+    if (hasCleaned) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(goals.value))
+      fetchApi('/api/emergency-fund', {
+        method: 'POST',
+        body: JSON.stringify(goals.value)
+      })
+    }
+  }
+
   const loadData = async () => {
     if (isInitialized) return
     isInitialized = true
@@ -54,6 +96,9 @@ export function useEmergencyFund() {
         goals.value = remoteGoals
         localStorage.setItem(STORAGE_KEY, JSON.stringify(remoteGoals))
       }
+
+      // 自動執行去重與校正
+      deduplicateEmergencyTransactions()
     } catch (e) {
       console.error('載入緊急備用金失敗:', e)
     }
@@ -173,27 +218,38 @@ export function useEmergencyFund() {
     }
   }
 
-  // 發薪日自動結算
+  // 發薪日自動結算 (具備雙重防重複存入保護)
   const processSalaryPayment = (currentMonthStr: string) => {
-    let hasChanges = false
     goals.value.forEach(goal => {
-      if (goal.lastProcessedMonth !== currentMonthStr) {
-        const activePlan = goal.depositPlans.find(p => p.isActive)
-        if (activePlan && activePlan.amount > 0) {
-          goal.currentAmount += activePlan.amount
-          goal.transactions.push({
-            id: crypto.randomUUID(),
-            type: 'deposit',
-            name: '每月定期存入 (發薪日)',
-            amount: activePlan.amount,
-            date: new Date().toISOString().split('T')[0],
-            createdAt: Date.now()
-          })
-          goal.lastProcessedMonth = currentMonthStr
-          checkGoalCompletion(goal)
-          goal.updatedAt = Date.now()
-          hasChanges = true
-        }
+      // 防呆保護 1：該月份已標記處理過
+      if (goal.lastProcessedMonth === currentMonthStr) return
+
+      // 防呆保護 2：檢查交易明細是否已有該月份發薪日存入紀錄
+      const alreadyProcessed = goal.transactions.some(tx => 
+        tx.type === 'deposit' && 
+        tx.name === '每月定期存入 (發薪日)' && 
+        tx.date.startsWith(currentMonthStr)
+      )
+
+      if (alreadyProcessed) {
+        goal.lastProcessedMonth = currentMonthStr
+        return
+      }
+
+      const activePlan = goal.depositPlans.find(p => p.isActive)
+      if (activePlan && activePlan.amount > 0) {
+        goal.currentAmount += activePlan.amount
+        goal.transactions.push({
+          id: crypto.randomUUID(),
+          type: 'deposit',
+          name: '每月定期存入 (發薪日)',
+          amount: activePlan.amount,
+          date: new Date().toISOString().split('T')[0],
+          createdAt: Date.now()
+        })
+        goal.lastProcessedMonth = currentMonthStr
+        checkGoalCompletion(goal)
+        goal.updatedAt = Date.now()
       }
     })
   }
