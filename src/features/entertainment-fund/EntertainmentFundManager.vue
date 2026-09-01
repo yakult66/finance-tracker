@@ -46,7 +46,7 @@ const handleAdd = () => {
   <div class="space-y-6">
     
     <!-- 概覽卡片 -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm">
         <div class="text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1">
           <i class="pi pi-wallet text-purple-500"></i> 薪資累積消費基金
