@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Tab } from '../types'
+import PwaInstallButton from './PwaInstallButton.vue'
 
 const props = defineProps<{
   tabs: Tab[]
@@ -108,6 +109,9 @@ const handleTabClick = (id: string) => {
         </span>
       </button>
     </nav>
+
+    <!-- 底部：加入主畫面 -->
+    <PwaInstallButton :collapsed="collapsed" />
   </aside>
 </template>
 

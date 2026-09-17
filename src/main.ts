@@ -5,6 +5,7 @@ import PrimeVue from 'primevue/config'
 import { definePreset } from '@primevue/themes'
 import Aura from '@primevue/themes/aura'
 import Ripple from 'primevue/ripple'
+import { setupPwa } from './shared/usePwa'
 
 const FinancePreset = definePreset(Aura, {
   semantic: {
@@ -39,3 +40,6 @@ app.use(PrimeVue, {
 app.directive('ripple', Ripple)
 
 app.mount('#app')
+
+// 註冊 Service Worker 並開始監聽安裝／更新事件
+setupPwa()

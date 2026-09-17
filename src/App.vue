@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import AppSidebar from './components/AppSidebar.vue'
+import PwaUpdateBanner from './components/PwaUpdateBanner.vue'
 import { tabs } from './app/navigation'
 import type { Tab } from './types'
 
@@ -56,6 +57,9 @@ const currentTabName = computed(() => {
       </main>
 
     </div>
+
+    <!-- 新版本提示 -->
+    <PwaUpdateBanner />
   </div>
 </template>
 
